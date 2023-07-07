@@ -5,20 +5,44 @@ import base64 as b64
 
 # Class: astUpdater:
     # Fields: 
-        # self.tree -> An ast tree that represents the data in the file bing read
+        # self.tree -> An ast tree that represents the data in the file being read
     # Methods:
-        # Initializer(decodedData) -> takes in decoded data and parses it into ast Tree, sets object variables
-        # updateFileData(newData) -> given new data, changes self.tree to the contents of the new data
+        # Initializer(tree) -> takes in an ast Tree and sets object variables
+        # updateFileData(newTree) -> changes self.tree to new tree
         # getDocumentation() -> Gets the documentation for the data in self.tree
 
+# class NestedFunctionFinder(inherits from ast.NodeVisitor)
+    # Fields: 
+        # level -> current level of tree
+        # nested -> set of strings that indicate which functions are nested and should be ignored
+        # tree -> ast object
+    # Methods:
+        # visit_FunctionDef -> overrides ast.NodeVisitor's visit class specifically for when a node that is a function def is found.
+
+class NestedFunctionFinder(ast.NodeVisitor):
+    def __init__(self, tree):
+        self.level = 0
+        self.nested = set()
+        self.tree = tree
+        
+    def visit_FunctionDef(self, node):
+        if self.level > 0:
+            self.nested.add(node)
+        self.level += 1
+        self.generic_visit(node)
+        self.level -= 1
+
+
 class astUpdater:
-    def __init__(self, decodedData):
-        self.tree = ast.parse(decodedData)
+    def __init__(self, tree, nested):
+        self.tree = tree
+        self.nested = nested
     
-    def updateFileData(self, newData):
-        self.tree = ast.parse(newData)
+    def updateFileData(self, newTree):
+        self.tree = newTree
 
     def __getExpectedOutputs(self, astNode):
+        
         def returnOutputName(element):
             # This checks if the return value is a constant or a variable and returns the appropriate value
             if isinstance(element, ast.Name):
@@ -71,7 +95,7 @@ class astUpdater:
         # create abstract snytax tree from read data
         for node in ast.walk(self.tree):
             # check if the node corresponds to a function
-            if isinstance(node, ast.FunctionDef):
+            if isinstance(node, ast.FunctionDef) and node not in self.nested:
                 # populate json
                 functionDict[node.name] = {}
                 docstring = ast.get_docstring(node).strip().replace("\n", " ").split()
@@ -80,25 +104,6 @@ class astUpdater:
                 functionDict[node.name]["Output(s)"] = self.__getExpectedOutputs(node)  
         return functionDict
     
-
-
-
-
-        
-
-
-
-# parser = argparse.ArgumentParser(description="Takes in a file of functions and returns a json object that describes them in the following format {'function_name': {'Description': text, 'Inputs': {'nameOfInput': 'typeofInput',...}, 'Outputs': {'nameOfOutput': 'typeofOutput',....}}, ...}")
-# parser.add_argument("-f", "--targetFile", help = "Filepath to file containing functions")
-# args = parser.parse_args()
-# if not args.targetFile:
-#     print("Please input path to file with functions when running this file with the flag -f")
-#     exit()
-# libraryReader = astUpdater(args.targetFile)
-# res = libraryReader.getDocumentation()
-# with open("documentation.json", "w") as f:
-#     json.dump(res, f)
-
 
 
 
