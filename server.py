@@ -4,6 +4,7 @@ import base64
 from updateDocumentation import astUpdater, NestedFunctionFinder
 import ast
 from waitress import serve
+
 app = Flask(__name__)
 
 @app.route("/", methods = ["Post"])
@@ -17,11 +18,10 @@ def getDocumentation():
     tree = ast.parse(decoded_data)
     findNested = NestedFunctionFinder(tree)
     findNested.visit(findNested.tree)
-    print([node.name for node in findNested.nested])
+
     documentationFetcher = astUpdater(tree, findNested.nested)
     return documentationFetcher.getDocumentation()
 
 
 if __name__ == "__main__":
-    print("RUNNING")
     serve(app, host='0.0.0.0', port=14366)
